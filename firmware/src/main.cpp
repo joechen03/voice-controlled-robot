@@ -3,38 +3,24 @@
 #include <driver/i2s.h>
 #include <esp_task_wdt.h>
 #include "I2SMicSampler.h"
-#include "ADCSampler.h"
 #include "config.h"
 #include "CommandDetector.h"
 #include "CommandProcessor.h"
 
-// i2s config for using the internal ADC
-i2s_config_t adcI2SConfig = {
-    .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_ADC_BUILT_IN),
-    .sample_rate = 16000,
-    .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
-    .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
-    .communication_format = I2S_COMM_FORMAT_I2S_LSB,
-    .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
-    .dma_buf_count = 4,
-    .dma_buf_len = 64,
-    .use_apll = false,
-    .tx_desc_auto_clear = false,
-    .fixed_mclk = 0};
-
-// i2s config for reading from both channels of I2S
-i2s_config_t i2sMemsConfigBothChannels = {
+// I2S config for INMP441 (I2S 麥克風)
+i2s_config_t i2sMemsConfig = {
     .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX),
-    .sample_rate = 16000,
-    .bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT,
-    .channel_format = I2S_MIC_CHANNEL,
-    .communication_format = i2s_comm_format_t(I2S_COMM_FORMAT_I2S),
-    .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
-    .dma_buf_count = 4,
+    .sample_rate = 44100,
+    .bits_per_sample = i2s_bits_per_sample_t(16),
+    .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
+    .communication_format = I2S_COMM_FORMAT_STAND_I2S,
+    .intr_alloc_flags = 0,
+    .dma_buf_count = 8,
     .dma_buf_len = 64,
     .use_apll = false,
     .tx_desc_auto_clear = false,
-    .fixed_mclk = 0};
+    .fixed_mclk = 0
+};
 
 // i2s microphone pins
 i2s_pin_config_t i2s_mic_pins = {
@@ -69,14 +55,9 @@ void setup()
   // make sure we don't get killed for our long running tasks
   esp_task_wdt_init(10, false);
 
-  // start up the I2S input (from either an I2S microphone or Analogue microphone via the ADC)
-#ifdef USE_I2S_MIC_INPUT
-  // Direct i2s input from INMP441 or the SPH0645
+  // 建立 I2S 麥克風取樣器
   I2SSampler *i2s_sampler = new I2SMicSampler(i2s_mic_pins, false);
-#else
-  // Use the internal ADC
-  I2SSampler *i2s_sampler = new ADCSampler(ADC_UNIT_1, ADC_MIC_CHANNEL);
-#endif
+
   // the command processor
   CommandProcessor *command_processor = new CommandProcessor();
 
@@ -87,12 +68,8 @@ void setup()
   TaskHandle_t applicationTaskHandle;
   xTaskCreatePinnedToCore(applicationTask, "Command Detect", 8192, commandDetector, 1, &applicationTaskHandle, 0);
 
-  // start sampling from i2s device - use I2S_NUM_0 as that's the one that supports the internal ADC
-#ifdef USE_I2S_MIC_INPUT
-  i2s_sampler->start(I2S_NUM_0, i2sMemsConfigBothChannels, applicationTaskHandle);
-#else
-  i2s_sampler->start(I2S_NUM_0, adcI2SConfig, applicationTaskHandle);
-#endif
+  // 啟動 I2S 麥克風
+  i2s_sampler->start(I2S_NUM_0, i2sMemsConfig, applicationTaskHandle);
 }
 
 void loop()
