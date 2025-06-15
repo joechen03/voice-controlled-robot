@@ -5,7 +5,6 @@
 #include "RingBuffer.h"
 #include "CommandDetector.h"
 #include "CommandProcessor.h"
-#include "esp_task_wdt.h"
 
 #define WINDOW_SIZE 320
 #define STEP_SIZE 160

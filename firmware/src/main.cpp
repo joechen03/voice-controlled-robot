@@ -10,7 +10,7 @@
 // I2S config for INMP441 (I2S mic)
 i2s_config_t i2sMemsConfig = {
     .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX),
-    .sample_rate = 44100,
+    .sample_rate = 32000,
     .bits_per_sample = i2s_bits_per_sample_t(16),
     .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
     .communication_format = I2S_COMM_FORMAT_STAND_I2S,
