@@ -9,16 +9,15 @@
 // approximate working size of our model
 const int kArenaSize = 50000;
 
+// force 16-byte aligned static buffer
+alignas(16) static uint8_t tensor_arena[kArenaSize];
+
 NeuralNetwork::NeuralNetwork()
 {
     m_error_reporter = new tflite::MicroErrorReporter();
 
-    m_tensor_arena = (uint8_t *)malloc(kArenaSize);
-    if (!m_tensor_arena)
-    {
-        TF_LITE_REPORT_ERROR(m_error_reporter, "Could not allocate arena");
-        return;
-    }
+    m_tensor_arena = tensor_arena;  // use aligned static buffer
+
     TF_LITE_REPORT_ERROR(m_error_reporter, "Loading model");
 
     m_model = tflite::GetModel(converted_model_tflite);
