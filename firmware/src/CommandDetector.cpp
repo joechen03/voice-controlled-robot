@@ -5,6 +5,7 @@
 #include "RingBuffer.h"
 #include "CommandDetector.h"
 #include "CommandProcessor.h"
+#include "esp_task_wdt.h"
 
 #define WINDOW_SIZE 320
 #define STEP_SIZE 160
@@ -63,9 +64,11 @@ void CommandDetector::run()
     // process the samples to get the spectrogram
     bool is_valid = m_audio_processor->get_spectrogram(reader, input_buffer);
     // finished with the sample reader
+
     delete reader;
     // get the prediction for the spectrogram
     m_nn->predict();
+
     // keep track of the previous 5 scores - about 0.5 seconds given current processing speed
     for (int i = 0; i < NUMBER_COMMANDS; i++)
     {
@@ -73,6 +76,7 @@ void CommandDetector::run()
         m_scores[m_scores_index][i] = log(is_valid ? prediction : 1e-6);
     }
     m_scores_index = (m_scores_index + 1) % COMMAND_WINDOW;
+
     // get the best score
     float scores[NUMBER_COMMANDS] = {0, 0, 0, 0, 0};
     for (int i = 0; i < COMMAND_WINDOW; i++)
@@ -82,6 +86,7 @@ void CommandDetector::run()
             scores[j] += m_scores[i][j];
         }
     }
+
     // get the best score
     float best_score = scores[0];
     int best_index = 0;
@@ -93,6 +98,7 @@ void CommandDetector::run()
             best_score = scores[i];
         }
     }
+
     long end = millis();
     // sanity check best score and check the cool down period
     if (best_score > DETECTION_THRESHOLD && best_index != NUMBER_COMMANDS - 1 && start - m_last_detection > 1000)
@@ -107,6 +113,6 @@ void CommandDetector::run()
     if (m_number_of_runs == 100)
     {
         m_number_of_runs = 0;
-        Serial.printf("Average detection time %.fms\n", m_average_detect_time);
+        Serial.printf("Average detection time %.fms\n\n", m_average_detect_time);
     }
 }
